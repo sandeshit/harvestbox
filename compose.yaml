@@ -1,0 +1,52 @@
+# Harvestbox: weekly produce-box pre-orders for the Hollow Creek farm co-op.
+#
+#   docker compose up -d --build      start the database and the API
+#   ./reset-offer.sh                  clear this week's pre-orders
+#   ./burst.sh <label>                pre-orders opening: 300 members order at once
+#   ./test.sh                         run the ordering tests
+
+x-app: &app
+  image: harvestbox-app
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings
+    PYTHONDONTWRITEBYTECODE: "1"
+    DB_HOST: db
+    DB_PORT: "5432"
+    DB_NAME: harvestbox
+    DB_USER: harvestbox
+    DB_PASSWORD: harvestbox-local
+  # The project folder is mounted, so a code change only needs `docker compose restart api`.
+  volumes:
+    - .:/app:ro
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: harvestbox
+      POSTGRES_USER: harvestbox
+      POSTGRES_PASSWORD: harvestbox-local
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U harvestbox -d harvestbox"]
+      interval: 2s
+      retries: 30
+
+  api:
+    <<: *app
+    build: .
+    command: gunicorn config.wsgi --bind 0.0.0.0:8000 --workers 4 --threads 16
+    depends_on:
+      db:
+        condition: service_healthy
+
+  tools:
+    <<: *app
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
