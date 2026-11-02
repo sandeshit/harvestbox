@@ -4,4 +4,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 label="${1:?usage: ./burst.sh <label>}"
-docker compose run --rm --no-deps tools python tools/order_burst.py 2>&1 | tee "results/burst-$label.txt"
+docker compose run --rm --no-deps tools python tools/order_burst.py | tee "results/burst-$label.txt"
